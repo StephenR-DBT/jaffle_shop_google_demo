@@ -25,7 +25,7 @@ renamed as (
         {{ cents_to_dollars('order_total') }} as order_total,
 
         ---------- timestamps
-        cast(ordered_at as date) as order_date
+        cast(cast(ordered_at as timestamp) as date) as order_date
 
     from source
 

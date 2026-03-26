@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: mart_regional_revenue_vs_target
+    description: "Mart reporting model tracking regional actual revenue against set monthly targets."
+    semantic_model:
+      enabled: true
+    agg_time_dimension: target_month
+    
+    columns:
+      - name: target_id
+        description: "Primary key."
+        entity:
+          type: primary
+          name: target
+        tests:
+          - unique
+          - not_null
+      - name: location_id
+        description: "The unique identifier for the store location."
+        entity:
+          type: foreign
+          name: location
+      - name: target_month
+        description: "The month for the target."
+        granularity: month
+        dimension:
+          type: time
+      - name: actual_revenue
+        description: "Actual total revenue accumulated by the location in the month."
+      - name: monthly_revenue_target
+        description: "The monthly revenue target assigned to the location."
+      - name: revenue_attainment_pct
+        description: "Percentage of the monthly revenue target achieved by actual revenue."
+      - name: revenue_vs_target_delta
+        description: "The difference in dollars between actual revenue and target (actual - target). A positive number indicates target exceeded."
+        
+    metrics:
+      - name: total_actual_revenue
+        type: simple
+        label: "Total Actual Revenue"
+        agg: sum
+        expr: actual_revenue
+        
+      - name: total_monthly_target
+        type: simple
+        label: "Total Monthly Target"
+        agg: sum
+        expr: monthly_revenue_target
+
+      - name: regional_revenue_attainment
+        description: "The percentage of targeted revenue achieved by actuals."
+        type: ratio
+        label: "Regional Revenue Attainment %"
+        numerator: total_actual_revenue
+        denominator: total_monthly_target
