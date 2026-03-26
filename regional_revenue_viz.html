@@ -159,6 +159,14 @@
     <div class="controls">
         <label for="month-select">Filter by Month:</label>
         <select id="month-select"></select>
+        
+        <label for="attainment-select" style="margin-left: 15px;">Attainment Status:</label>
+        <select id="attainment-select">
+            <option value="all">All Locations</option>
+            <option value="success">Met Target (≥ 100%)</option>
+            <option value="warning">At Risk (80-99%)</option>
+            <option value="danger">Needs Attention (< 80%)</option>
+        </select>
     </div>
 
     <div class="dashboard">
@@ -293,18 +301,30 @@
             // Draw map markers root
             mapG.append("g").attr("class", "city-markers");
 
-            // Render active month
-            render(months[0]);
+            // Render active
+            render();
             
             // Setup re-render on change
-            select.on("change", function() {
-                render(this.value);
-            });
+            d3.select("#month-select").on("change", render);
+            d3.select("#attainment-select").on("change", render);
         });
 
         // Function invoked directly or from selector
-        function render(selectedMonth) {
-            const filteredData = data.filter(d => d.target_month === selectedMonth);
+        function render() {
+            const selectedMonth = d3.select("#month-select").property("value");
+            const selectedAttainment = d3.select("#attainment-select").property("value");
+
+            const filteredData = data.filter(d => {
+                // Month filter
+                if (d.target_month !== selectedMonth) return false;
+                
+                // Attainment filter
+                if (selectedAttainment === "success" && d.revenue_attainment_pct < 100) return false;
+                if (selectedAttainment === "warning" && (d.revenue_attainment_pct >= 100 || d.revenue_attainment_pct < 80)) return false;
+                if (selectedAttainment === "danger" && d.revenue_attainment_pct >= 80) return false;
+                
+                return true;
+            });
             
             /* --- UPDATE CHART --- */
             const groupedData = filteredData.map(d => ({
