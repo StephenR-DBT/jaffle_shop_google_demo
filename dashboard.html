@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Insights Dashboard</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/topojson-client@3"></script>
+  <style>
+    :root {
+      --dbt-orange: #FF6B4A;
+      --dbt-dark-orange: #F15A24;
+      --bg-dark: #121212;
+      --panel-bg: #1e1e1e;
+      --text-main: #f0f0f0;
+      --text-muted: #aaaaaa;
+      --border-color: #333333;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      background-color: var(--panel-bg);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .logo-container img {
+      height: 40px;
+    }
+    
+    h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .filters-bar {
+      display: flex;
+      gap: 20px;
+      padding: 1rem 2rem;
+      background-color: #181818;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    
+    .filter-group label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    select, input[type="date"] {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    select:focus, input[type="date"]:focus {
+      border-color: var(--dbt-orange);
+    }
+
+    main {
+      padding: 2rem;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      overflow-y: auto;
+    }
+
+    .kpi-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .kpi-card {
+      background-color: var(--panel-bg);
+      padding: 1.5rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background-color: var(--dbt-orange);
+    }
+
+    .kpi-title {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .kpi-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .charts-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    .chart-card {
+      background-color: var(--panel-bg);
+      padding: 1.5rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      min-height: 400px;
+    }
+
+    .chart-title {
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+
+    /* D3 SVG Styles */
+    svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    #line-chart svg {
+      overflow: visible;
+    }
+
+    #map-chart svg {
+      overflow: hidden;
+      border-radius: 8px;
+    }
+
+    .line {
+      fill: none;
+      stroke: var(--dbt-orange);
+      stroke-width: 3px;
+    }
+
+    .line.forecast {
+      stroke-dasharray: 5, 5;
+      opacity: 0.7;
+    }
+
+    .axis text {
+      fill: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .axis path, .axis line {
+      stroke: var(--border-color);
+    }
+    
+    .grid line {
+      stroke: var(--border-color);
+      stroke-dasharray: 2, 2;
+    }
+    .grid path {
+      stroke-width: 0;
+    }
+
+    .map-rect {
+      fill: var(--bg-dark);
+      stroke: var(--border-color);
+    }
+    
+    .state {
+      fill: #1e1e1e;
+      stroke: #3a3a3a;
+      stroke-width: 1px;
+    }
+    
+    .map-circle {
+      fill: rgba(241, 90, 36, 0.4);
+      stroke: #F15A24;
+      stroke-width: 2.5px;
+      transition: all 0.2s ease-in-out;
+    }
+    .map-circle:hover {
+      fill: rgba(241, 90, 36, 0.9);
+      stroke: #ffffff;
+      stroke-width: 3px;
+      cursor: pointer;
+    }
+
+    .tooltip {
+      position: absolute;
+      text-align: center;
+      padding: 8px;
+      font-size: 0.85rem;
+      background: var(--panel-bg);
+      border: 1px solid var(--dbt-orange);
+      pointer-events: none;
+      opacity: 0;
+      border-radius: 4px;
+      color: white;
+      transition: opacity 0.2s;
+      z-index: 10;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-container">
+      <img src="dbtlabslogo.png" alt="dbt Logo" onerror="this.src='https://cdn.worldvectorlogo.com/logos/dbt-1.svg'">
+      <h1>Order Insights Dashboard</h1>
+    </div>
+  </header>
+
+  <div class="filters-bar">
+    <div class="filter-group">
+      <label>Location</label>
+      <select id="filter-location">
+        <option value="All">All Locations</option>
+        <option value="New York">New York</option>
+        <option value="Philadelphia">Philadelphia</option>
+        <option value="Chicago">Chicago</option>
+      </select>
+    </div>
+    
+    <div class="filter-group">
+      <label>Product Name</label>
+      <select id="filter-product">
+        <option value="All">All Products</option>
+        <option value="Jaffle">Jaffle</option>
+        <option value="Coffee">Coffee</option>
+        <option value="Soda">Soda</option>
+      </select>
+    </div>
+    
+    <div class="filter-group">
+      <label>Start Date</label>
+      <input type="date" id="filter-date" value="2024-01-01">
+    </div>
+  </div>
+
+  <main>
+    <div class="kpi-container">
+      <div class="kpi-card">
+        <div class="kpi-title">Total Revenue</div>
+        <div class="kpi-value" id="kpi-revenue">$0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Total Items Sold</div>
+        <div class="kpi-value" id="kpi-items">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Total Orders</div>
+        <div class="kpi-value" id="kpi-orders">0</div>
+      </div>
+    </div>
+
+    <div class="charts-container">
+      <div class="chart-card" id="line-chart-container">
+        <div class="chart-title">Revenue & Forecast Over Time</div>
+        <div id="line-chart" style="flex-grow: 1;"></div>
+      </div>
+      
+      <div class="chart-card" id="map-container">
+        <div class="chart-title">Sales by Location Map</div>
+        <div id="map-chart" style="flex-grow: 1; position: relative;"></div>
+      </div>
+    </div>
+  </main>
+
+  <div id="tooltip" class="tooltip"></div>
+
+  <script>
+    // Mock Data representing Semantic Layer outputs
+    const generateData = () => {
+      const data = [];
+      const locations = [
+          {name: 'New York', lon: -74.0060, lat: 40.7128},
+          {name: 'Philadelphia', lon: -75.1652, lat: 39.9526},
+          {name: 'Chicago', lon: -87.6298, lat: 41.8781}
+      ];
+      const products = ['Jaffle', 'Coffee', 'Soda'];
+      
+      let currentDate = new Date('2024-01-01');
+      const endDate = new Date('2024-06-30');
+      
+      while (currentDate <= endDate) {
+        locations.forEach(loc => {
+          products.forEach(prod => {
+            const isForecast = currentDate > new Date('2024-05-31');
+            const baseValue = isForecast ? 100 : 80;
+            const fluctuation = Math.random() * 40;
+            
+            data.push({
+              date: new Date(currentDate),
+              location: loc.name,
+              product: prod,
+              revenue: Math.round(baseValue + fluctuation) * (prod === 'Jaffle' ? 8 : 4),
+              items: Math.round(baseValue + fluctuation),
+              orders: Math.round((baseValue + fluctuation) * 0.7),
+              isForecast: isForecast,
+              lon: loc.lon,
+              lat: loc.lat
+            });
+          });
+        });
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      return data;
+    };
+
+    const fullData = generateData();
+    const tooltip = d3.select("#tooltip");
+
+    // Formatters
+    const formatCurrency = d3.format("$,.0f");
+    const formatNumber = d3.format(",.0f");
+
+    let usTopology = null;
+
+    // Load US TopoJSON for map
+    d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(topo => {
+      usTopology = topo;
+      updateDashboard();
+    }).catch(err => {
+      console.error("Failed to load map data", err);
+      updateDashboard(); // Render without map if failed
+    });
+
+    // Initialize Dashboard
+    function updateDashboard() {
+      const filterLocation = document.getElementById('filter-location').value;
+      const filterProduct = document.getElementById('filter-product').value;
+      const filterDate = new Date(document.getElementById('filter-date').value);
+
+      // Filter Data
+      const filteredData = fullData.filter(d => {
+        let include = true;
+        if (filterLocation !== 'All' && d.location !== filterLocation) include = false;
+        if (filterProduct !== 'All' && d.product !== filterProduct) include = false;
+        if (d.date < filterDate) include = false;
+        return include;
+      });
+
+      // Calculate Total KPIs
+      const totalRevenue = d3.sum(filteredData, d => d.revenue);
+      const totalItems = d3.sum(filteredData, d => d.items);
+      const totalOrders = d3.sum(filteredData, d => d.orders);
+
+      d3.select('#kpi-revenue').text(formatCurrency(totalRevenue));
+      d3.select('#kpi-items').text(formatNumber(totalItems));
+      d3.select('#kpi-orders').text(formatNumber(totalOrders));
+
+      // Update Charts
+      drawLineChart(filteredData);
+      drawMap(filteredData);
+    }
+
+    function drawLineChart(data) {
+      d3.select("#line-chart").selectAll("*").remove();
+
+      const container = document.getElementById('line-chart');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      const margin = {top: 20, right: 30, bottom: 30, left: 60};
+
+      const svg = d3.select("#line-chart")
+        .append("svg")
+        .attr("viewBox", `0 0 ${width} ${height}`);
+
+      // Group by date and calculate sum of revenue
+      const aggData = Array.from(
+        d3.rollup(data, v => ({
+          revenue: d3.sum(v, leaf => leaf.revenue),
+          isForecast: v[0].isForecast
+        }), d => d.date)
+      ).map(([date, vals]) => ({
+        date: date,
+        revenue: vals.revenue,
+        isForecast: vals.isForecast
+      })).sort((a,b) => a.date - b.date);
+
+      if(aggData.length === 0) return;
+
+      const historical = aggData.filter(d => !d.isForecast);
+      const forecast = aggData.filter(d => d.isForecast);
+      
+      // Connect historical to forecast to prevent gap
+      if(historical.length > 0 && forecast.length > 0) {
+          forecast.unshift(historical[historical.length-1]);
+      }
+
+      const x = d3.scaleTime()
+        .domain(d3.extent(aggData, d => d.date))
+        .range([margin.left, width - margin.right]);
+
+      const y = d3.scaleLinear()
+        .domain([0, d3.max(aggData, d => d.revenue) * 1.1]).nice()
+        .range([height - margin.bottom, margin.top]);
+
+      const line = d3.line()
+        .x(d => x(d.date))
+        .y(d => y(d.revenue))
+        .curve(d3.curveMonotoneX);
+
+      // Grid
+      svg.append("g")
+        .attr("class", "grid")
+        .attr("transform", `translate(0,${height - margin.bottom})`)
+        .call(d3.axisBottom(x).ticks(5).tickSize(-(height - margin.top - margin.bottom)).tickFormat(""));
+        
+      svg.append("g")
+        .attr("class", "grid")
+        .attr("transform", `translate(${margin.left},0)`)
+        .call(d3.axisLeft(y).ticks(5).tickSize(-(width - margin.left - margin.right)).tickFormat(""));
+
+      // Axes
+      svg.append("g")
+        .attr("class", "axis")
+        .attr("transform", `translate(0,${height - margin.bottom})`)
+        .call(d3.axisBottom(x).ticks(6));
+
+      svg.append("g")
+        .attr("class", "axis")
+        .attr("transform", `translate(${margin.left},0)`)
+        .call(d3.axisLeft(y).ticks(5).tickFormat(d => "$" + d/1000 + "k"));
+
+      // Paths
+      svg.append("path")
+        .datum(historical)
+        .attr("class", "line")
+        .attr("d", line);
+
+      if(forecast.length > 1) {
+        svg.append("path")
+          .datum(forecast)
+          .attr("class", "line forecast")
+          .attr("d", line);
+      }
+    }
+
+    function drawMap(data) {
+      if (!usTopology) return;
+
+      d3.select("#map-chart").selectAll("*").remove();
+
+      const container = document.getElementById('map-chart');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      const svg = d3.select("#map-chart")
+        .append("svg")
+        .attr("viewBox", `0 0 ${width} ${height}`);
+
+      svg.append("rect")
+         .attr("class", "map-rect")
+         .attr("width", width)
+         .attr("height", height)
+         .attr("rx", 8);
+
+      const featureColl = topojson.feature(usTopology, usTopology.objects.states);
+      
+      // Maintain 20px padding
+      const pd = 20;
+      const projection = d3.geoAlbersUsa()
+          .fitSize([width - (pd * 2), height - (pd * 2)], featureColl);
+
+      const path = d3.geoPath().projection(projection);
+
+      // Map group strictly centered with the padding constraints
+      const mapGroup = svg.append("g")
+          .attr("transform", `translate(${pd}, ${pd})`);
+
+      // Draw states
+      mapGroup.selectAll("path")
+        .data(featureColl.features)
+        .join("path")
+        .attr("class", "state")
+        .attr("d", path);
+
+      // Group data by location to size circles
+      const locData = Array.from(
+        d3.rollup(data, v => ({
+          revenue: d3.sum(v, d => d.revenue),
+          lon: v[0].lon,
+          lat: v[0].lat
+        }), d => d.location)
+      ).map(([location, vals]) => ({
+        location,
+        revenue: vals.revenue,
+        lon: vals.lon,
+        lat: vals.lat
+      }));
+      
+      if(locData.length === 0) return;
+
+      const radiusScale = d3.scaleSqrt()
+        .domain([0, d3.max(locData, d => d.revenue) || 1])
+        .range([6, 26]);
+
+      // Provide initial positions based on projection
+      locData.forEach(d => {
+        const p = projection([d.lon, d.lat]);
+        if(p) {
+          d.x = p[0];
+          d.y = p[1];
+          d.px = p[0];
+          d.py = p[1];
+        } else {
+          d.x = (width-pd)/2; d.y = (height-pd)/2;
+          d.px = (width-pd)/2; d.py = (height-pd)/2;
+        }
+      });
+
+      // Avoid Overlap using force simulation
+      const simulation = d3.forceSimulation(locData)
+        .force("x", d3.forceX(d => d.px).strength(0.8))
+        .force("y", d3.forceY(d => d.py).strength(0.8))
+        .force("collide", d3.forceCollide(d => radiusScale(d.revenue) + 2).strength(1))
+        .stop();
+
+      for (let i = 0; i < 150; ++i) simulation.tick();
+
+      mapGroup.selectAll("circle")
+        .data(locData)
+        .join("circle")
+        .attr("class", "map-circle")
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y)
+        .attr("r", d => radiusScale(d.revenue))
+        .on("mouseover", function(event, d) {
+           tooltip.transition().duration(200).style("opacity", 1);
+           tooltip.html(`<b>${d.location}</b><br/>Rev: ${formatCurrency(d.revenue)}`)
+             .style("left", (event.pageX + 10) + "px")
+             .style("top", (event.pageY - 28) + "px");
+        })
+        .on("mouseout", function(d) {
+           tooltip.transition().duration(400).style("opacity", 0);
+        });
+    }
+
+    // Event Listeners
+    document.querySelectorAll('select, input').forEach(el => {
+      el.addEventListener('change', updateDashboard);
+    });
+
+    window.addEventListener('resize', updateDashboard);
+
+  </script>
+</body>
+</html>

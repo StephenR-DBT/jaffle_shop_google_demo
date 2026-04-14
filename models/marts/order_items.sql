@@ -25,6 +25,12 @@ supplies as (
 
 ),
 
+locations as (
+
+    select * from {{ ref('locations') }}
+
+),
+
 order_supplies_summary as (
 
     select
@@ -50,7 +56,10 @@ joined as (
         products.is_food_item,
         products.is_drink_item,
 
-        order_supplies_summary.supply_cost
+        order_supplies_summary.supply_cost,
+
+        locations.location_id,
+        locations.location_name
 
     from order_items
 
@@ -60,6 +69,9 @@ joined as (
 
     left join order_supplies_summary
         on order_items.product_id = order_supplies_summary.product_id
+        
+    left join locations
+        on orders.location_id = locations.location_id
 
 )
 

@@ -32,10 +32,72 @@ unit_tests:
           - {order_id: 2, product_id: 2}
       - input: ref('stg_orders')
         rows:
-          - {order_id: 1}
-          - {order_id: 2}
+          - {order_id: 1, location_id: 1}
+          - {order_id: 2, location_id: 1}
+      - input: ref('locations')
+        rows:
+          - {location_id: 1, location_name: 'Test Location'}
     expect:
       rows:
-        - {order_id: 1, product_id: 1, supply_cost: 4.50}
-        - {order_id: 2, product_id: 2, supply_cost: 8.50}
-        - {order_id: 2, product_id: 2, supply_cost: 8.50}
+        - {order_id: 1, product_id: 1, supply_cost: 4.50, location_id: 1, location_name: 'Test Location'}
+        - {order_id: 2, product_id: 2, supply_cost: 8.50, location_id: 1, location_name: 'Test Location'}
+        - {order_id: 2, product_id: 2, supply_cost: 8.50, location_id: 1, location_name: 'Test Location'}
+
+semantic_models:
+  - name: order_items
+    description: Line items for every order
+    model: ref('order_items')
+    defaults:
+      agg_time_dimension: order_date
+    entities:
+      - name: order_item
+        type: primary
+        expr: order_item_id
+      - name: order
+        type: foreign
+        expr: order_id
+      - name: product
+        type: foreign
+        expr: product_id
+      - name: location
+        type: foreign
+        expr: location_id
+    dimensions:
+      - name: order_date
+        type: time
+        type_params:
+          time_granularity: day
+      - name: product_name
+        type: categorical
+      - name: location_name
+        type: categorical
+    measures:
+      - name: total_revenue
+        expr: product_price
+        agg: sum
+      - name: total_items_sold
+        expr: 1
+        agg: sum
+      - name: total_supply_cost
+        expr: supply_cost
+        agg: sum
+
+metrics:
+  - name: total_revenue
+    label: Total Revenue
+    description: Total revenue from product prices
+    type: simple
+    type_params:
+      measure: total_revenue
+  - name: total_items_sold
+    label: Total Items Sold
+    description: Total items sold
+    type: simple
+    type_params:
+      measure: total_items_sold
+  - name: total_supply_cost
+    label: Total Supply Cost
+    description: Total supply cost
+    type: simple
+    type_params:
+      measure: total_supply_cost
