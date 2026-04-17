@@ -1,6 +1,39 @@
 version: 2
 
 seeds:
+  - name: customer_info
+    description: "PII-enriched customer data including contact details, mailing address, and payment information. Joins to raw_customers on CUSTOMER_ID."
+    config:
+      tags: ['pii']
+    columns:
+      - name: CUSTOMER_ID
+        description: "UUID matching the ID column in raw_customers — use this to join the two seeds."
+        tests:
+          - unique
+          - not_null
+      - name: EMAIL
+        description: "Customer email address."
+      - name: PHONE
+        description: "Customer phone number."
+      - name: STREET_ADDRESS
+        description: "Street-level mailing address."
+      - name: CITY
+        description: "City of the customer's mailing address."
+      - name: STATE
+        description: "Two-letter US state abbreviation."
+      - name: ZIP_CODE
+        description: "USPS ZIP code."
+      - name: COUNTRY
+        description: "Country (ISO alpha-3)."
+      - name: CREDIT_CARD_NUMBER
+        description: "Customer credit card number (PII — handle with care)."
+      - name: CREDIT_CARD_EXPIRY
+        description: "Card expiry in MM/YY format."
+      - name: CREDIT_CARD_TYPE
+        description: "Card network: Visa, Mastercard, or Amex."
+      - name: DATE_OF_BIRTH
+        description: "Customer date of birth (PII)."
+
   - name: regional_sales_targets
     description: "Monthly regional sales targets for each location."
     columns:
