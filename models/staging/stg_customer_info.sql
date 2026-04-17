@@ -3,7 +3,7 @@ with
 source as (
 
     -- References the customer_info seed which holds PII enrichment data
-    select * from {{ ref('customer_info') }}
+    select * from {{ ref('raw_customer_info') }}
 
 ),
 

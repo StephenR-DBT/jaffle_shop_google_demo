@@ -1,7 +1,7 @@
 version: 2
 
 seeds:
-  - name: customer_info
+  - name: raw_customer_info
     description: "PII-enriched customer data including contact details, mailing address, and payment information. Joins to raw_customers on CUSTOMER_ID."
     config:
       tags: ['pii']
