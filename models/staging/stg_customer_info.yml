@@ -1,0 +1,71 @@
+version: 2
+
+models:
+  - name: stg_customer_info
+    config:
+      tags: ['pii', 'staging']
+    description: >
+      Staged PII data sourced from the customer_info seed. Contains one row per
+      customer with contact details, mailing address, credit card information,
+      and date of birth. Joins to stg_customers on customer_id.
+    columns:
+      - name: customer_id
+        description: UUID primary key — matches stg_customers.customer_id.
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
+
+      - name: email
+        description: Customer email address.
+        data_tests:
+          - not_null
+
+      - name: phone
+        description: Customer phone number.
+
+      - name: street_address
+        description: Street-level mailing address.
+        data_tests:
+          - not_null
+
+      - name: city
+        description: City of the customer's mailing address.
+        data_tests:
+          - not_null
+
+      - name: state
+        description: Two-letter US state abbreviation.
+        data_tests:
+          - not_null
+
+      - name: zip_code
+        description: USPS ZIP code.
+        data_tests:
+          - not_null
+
+      - name: country
+        description: Country (ISO alpha-3).
+
+      - name: credit_card_number
+        description: Customer credit card number. Handle with care — PII.
+        data_tests:
+          - not_null
+
+      - name: credit_card_expiry
+        description: Card expiry in MM/YY format.
+
+      - name: credit_card_type
+        description: Card network.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Visa', 'Mastercard', 'Amex']
+
+      - name: date_of_birth
+        description: Customer date of birth — PII.
+        data_tests:
+          - not_null

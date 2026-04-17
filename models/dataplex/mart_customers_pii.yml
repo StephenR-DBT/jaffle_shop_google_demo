@@ -1,0 +1,123 @@
+version: 2
+
+models:
+  - name: mart_customers_pii
+    config:
+      tags: ['pii', 'mart']
+    description: >
+      Full customer data mart combining identity, order history, and PII enrichment
+      (contact info, mailing address, credit card, date of birth). One row per customer.
+      This model contains sensitive personal information — restrict access appropriately.
+    data_tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "lifetime_spend_pretax + lifetime_tax_paid = lifetime_spend"
+
+    columns:
+      - name: customer_id
+        description: The unique key for each customer.
+        data_tests:
+          - not_null
+          - unique
+
+      - name: customer_name
+        description: Customer full name.
+        data_tests:
+          - not_null
+
+      - name: email
+        description: Customer email address (PII).
+        data_tests:
+          - not_null
+
+      - name: phone
+        description: Customer phone number (PII).
+
+      - name: street_address
+        description: Street-level mailing address (PII).
+        data_tests:
+          - not_null
+
+      - name: city
+        description: City of the customer's mailing address.
+        data_tests:
+          - not_null
+
+      - name: state
+        description: Two-letter US state abbreviation.
+        data_tests:
+          - not_null
+
+      - name: zip_code
+        description: USPS ZIP code.
+        data_tests:
+          - not_null
+
+      - name: country
+        description: Country (ISO alpha-3).
+
+      - name: credit_card_number
+        description: Customer credit card number (PII — highly sensitive).
+        data_tests:
+          - not_null
+
+      - name: credit_card_expiry
+        description: Card expiry in MM/YY format.
+
+      - name: credit_card_type
+        description: Card network — Visa, Mastercard, or Amex.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Visa', 'Mastercard', 'Amex']
+
+      - name: date_of_birth
+        description: Customer date of birth (PII).
+        data_tests:
+          - not_null
+
+      - name: count_lifetime_orders
+        description: Total number of orders the customer has ever placed.
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: first_order_date
+        description: Date of the customer's very first order.
+
+      - name: last_order_date
+        description: Date of the customer's most recent order.
+
+      - name: lifetime_spend_pretax
+        description: Sum of all pre-tax order subtotals the customer has placed.
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: lifetime_tax_paid
+        description: Sum of all tax amounts across the customer's orders.
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: lifetime_spend
+        description: Sum of all order totals (pre-tax + tax) the customer has placed.
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: customer_type
+        description: Whether the customer is 'new' (one order) or 'returning' (more than one).
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['new', 'returning']
