@@ -1,0 +1,13 @@
+{
+    "mcpServers": {
+        "dbt": {
+            "url": "https://ky574.us1.dbt.com/api/ai/v1/mcp/",
+            "headers": {
+                "Authorization": "Token {insert_token}",
+                "x-dbt-prod-environment-id": "454131",
+                "x-dbt-user-id": "322310",
+                "x-dbt-dev-environment-id": "453130"
+            }
+        }
+    }
+}
