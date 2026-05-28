@@ -1,6 +1,6 @@
 name: jaffle_shop_bigquery
 
-profile: OAuthNotebook
+profile: GoogleWorkshopVSCode
 
 seed-paths: ["seeds"]
 model-paths: ["models"]
